@@ -6,7 +6,7 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-const API_KEY = "sk-ant-api03-XXXXXXXX"; // apni key yahan
+const API_KEY = process.env.ANTHROPIC_API_KEY;// apni key yahan
 
 app.post("/ai", async (req, res) => {
   const payload = JSON.stringify({
