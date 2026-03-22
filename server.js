@@ -11,12 +11,10 @@ app.post('/ai', async (req, res) => {
 
     const { model, max_tokens, system, messages } = req.body;
 
-    // Validate messages
     if (!messages || messages.length === 0) {
-      return res.status(400).json({ error: 'Messages array is empty' });
+      return res.status(400).json({ error: 'Messages empty' });
     }
 
-    // Ensure first message is user
     const filteredMessages = messages.filter(m => m.content && m.content.trim() !== '');
     const firstUserIdx = filteredMessages.findIndex(m => m.role === 'user');
     if (firstUserIdx === -1) {
@@ -24,30 +22,38 @@ app.post('/ai', async (req, res) => {
     }
     const validMessages = filteredMessages.slice(firstUserIdx);
 
-    const response = await fetch('https://api.anthropic.com/v1/messages', {
+    const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'x-api-key': process.env.ANTHROPIC_API_KEY,
-        'anthropic-version': '2023-06-01'
+        'Authorization': `Bearer ${process.env.GROQ_API_KEY}`
       },
       body: JSON.stringify({
-        model: model || 'claude-haiku-4-5-20251001',
+        model: 'llama-3.3-70b-versatile',
         max_tokens: max_tokens || 1000,
-        system: system || '',
-        messages: validMessages
+        messages: [
+          { role: 'system', content: system || '' },
+          ...validMessages
+        ]
       })
     });
 
     const data = await response.json();
-    console.log('Anthropic response status:', response.status);
+    console.log('Groq response status:', response.status);
 
     if (!response.ok) {
-      console.error('Anthropic error:', data);
+      console.error('Groq error:', data);
       return res.status(response.status).json(data);
     }
 
-    res.json(data);
+    // Anthropic format mein convert karo (app ka code same rahega)
+    const result = {
+      content: [{
+        text: data.choices?.[0]?.message?.content || 'Sorry, kuch problem aayi.'
+      }]
+    };
+
+    res.json(result);
 
   } catch (error) {
     console.error('Proxy error:', error);
@@ -56,7 +62,7 @@ app.post('/ai', async (req, res) => {
 });
 
 app.get('/', (req, res) => {
-  res.send('ContractX Proxy is running!');
+  res.send('ContractX Proxy running with Groq!');
 });
 
 const PORT = process.env.PORT || 10000;
